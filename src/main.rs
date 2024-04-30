@@ -16,7 +16,13 @@ struct SinkInput {
     app: String,
 }
 
+// This function uses pacmd provided by PulseAudio to list the sink inputs to the stdout.
+// It then pipes that output to grep and pipes that output to awk to clean the output.
+// When finished, we collect all the inputs we were able to parse into a vector and return that.
 fn collect_sink_inputs() -> Result<Vec<SinkInput>, Box<dyn Error>> {
+    // TODO: We start and execute multiple commands and pipe stdin to stdout until we have a clean
+    // enough output to parse. Consider replacing some commands by reading through and parsing the
+    // output of pacmd ourselves.
     let pacmd = Command::new("pacmd")
         .arg("list-sink-inputs")
         .stdout(Stdio::piped())
@@ -79,7 +85,13 @@ fn collect_sink_inputs() -> Result<Vec<SinkInput>, Box<dyn Error>> {
     Ok(sink_inputs)
 }
 
+// This function uses pacmd provided by PulseAudio to list the sinks to the stdout.
+// It then pipes that output to grep and pipes that output to awk to clean the output.
+// When finished, we collect all the Sinks we were able to parse into a vector and return that.
 fn collect_sinks() -> Result<Vec<Sink>, Box<dyn Error>> {
+    // TODO: We start and execute multiple commands and pipe stdin to stdout until we have a clean
+    // enough output to parse. Consider replacing some commands by reading through and parsing the
+    // output of pacmd ourselves.
     let pacmd = Command::new("pacmd")
         .arg("list-sinks")
         .stdout(Stdio::piped())
@@ -143,6 +155,32 @@ fn move_sinks(stream: String, sink: String) {
     let _output = pacmd.wait_with_output().expect("Failed to wait");
 }
 
+// TODO: This is a placeholder function. Consider cleaning this function
+// for actual use or removing it when no longer needed
+fn print_sinks(sinks: Vec<Sink>) {
+    println!("====== Sinks ======");
+    for sink in sinks {
+        let index = sink.index;
+        let name = sink.name;
+        println!("{index} - {name}");
+    }
+    println!();
+}
+
+// TODO: This is a placeholder function. Consider cleaning this function
+// for actual use or removing it when no longer needed
+fn print_sink_inputs(sink_inputs: Vec<SinkInput>) {
+    println!("====== Streams ======");
+    for input in sink_inputs {
+        let index = input.index;
+        let media = input.media;
+        let app = input.app;
+        println!("{index} - {app}");
+        println!("> {media}");
+    }
+    println!();
+}
+
 fn main() {
     // Collect our output devices
     let sinks = collect_sinks().unwrap();
@@ -159,32 +197,20 @@ fn main() {
         .find(|x| x.index == index)
         .unwrap();
 
-    println!("====== Sinks ======");
+    // TODO: Here I got lazy and just wanted a working concept. We print the inputs and sinks we
+    // collected and ask the user to type in a input ID and then a sink ID to direct it to. We do
+    // not bother checking the user inputs against anything we collected.
+    print_sink_inputs(sink_inputs);
+    print_sinks(sinks);
 
-    for sink in sinks {
-        let index = sink.index;
-        let name = sink.name;
-        println!("{index} - {name}");
-    }
-    println!();
-    println!("====== Streams ======");
-    for input in sink_inputs {
-        let index = input.index;
-        let media = input.media;
-        let app = input.app;
-        println!("{index} - {app}");
-        println!("> {media}");
-    }
-    println!();
-    println!("Chose stream");
-
+    println!("Chose Sink Stream");
     let mut target_input = String::new();
     io::stdin()
         .read_line(&mut target_input)
         .expect("failed to read");
-
     println!();
-    println!("Chose output");
+
+    println!("Chose Sink");
     let mut target_output = String::new();
     io::stdin()
         .read_line(&mut target_output)

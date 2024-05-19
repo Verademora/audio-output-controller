@@ -186,7 +186,6 @@ fn move_sinks(sink_input: &SinkInput, sink: &Sink) {
         .spawn()
         .expect("Something went wrong");
     let _output = pacmd.wait_with_output().expect("Failed to wait");
-    set_default_sink(sink);
 }
 
 fn set_default_sink(sink: &Sink) {
@@ -250,10 +249,15 @@ fn move_all_next() {
     let mut sinks_iter = sinks.iter();
     let _default = sinks_iter.find(|x| x.is_default).unwrap();
     match sinks_iter.next() {
-        Some(next) => sink_inputs.iter().for_each(|x| move_sinks(x, next)),
-        None => sink_inputs
-            .iter()
-            .for_each(|x| move_sinks(x, sinks.first().unwrap())),
+        Some(next) => {
+            sink_inputs.iter().for_each(|x| move_sinks(x, next));
+            set_default_sink(next);
+        }
+        None => {
+            let first = sinks.first().unwrap();
+            sink_inputs.iter().for_each(|x| move_sinks(x, first));
+            set_default_sink(first);
+        }
     }
 }
 
@@ -307,20 +311,30 @@ fn cli_prompt() {
 
 fn main() {
     let cli = Cli::parse();
+    let sinks = collect_sinks().unwrap();
+    if sinks.is_empty() {
+        println!("No audio devices detected");
+        return;
+    }
 
+    let mut no_command = true;
+
+    if let Some(opt) = cli.print {
+        no_command = false;
+        if &opt == "default" || &opt == "d" {
+            let default = sinks.iter().find(|x| x.is_default).unwrap();
+            println!("{}", default.description);
+        }
+    }
     if let Some(opt) = cli.move_all {
+        no_command = false;
         if &opt == "next" || &opt == "n" {
             move_all_next();
         } else if &opt == "default" || &opt == "d" {
             move_all_default();
         }
-    } else if let Some(opt) = cli.print {
-        if &opt == "default" || &opt == "d" {
-            let sinks = collect_sinks().unwrap();
-            let default = sinks.iter().find(|x| x.is_default).unwrap();
-            println!("{}", default.description);
-        }
-    } else {
+    }
+    if no_command {
         cli_prompt();
     }
 }

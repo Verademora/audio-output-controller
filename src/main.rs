@@ -176,7 +176,7 @@ fn collect_sinks() -> Result<Vec<Sink>, Box<dyn Error>> {
     Ok(sinks)
 }
 
-fn move_sinks(sink_input: SinkInput, sink: Sink) {
+fn move_sinks(sink_input: &SinkInput, sink: &Sink) {
     let pacmd = Command::new("pacmd")
         .arg("move-sink-input")
         .arg(sink_input.index.to_string())
@@ -187,7 +187,7 @@ fn move_sinks(sink_input: SinkInput, sink: Sink) {
     set_default_sink(sink);
 }
 
-fn set_default_sink(sink: Sink) {
+fn set_default_sink(sink: &Sink) {
     let pacmd = Command::new("pacmd")
         .arg("set-default-sink")
         .arg(sink.index.to_string())
@@ -246,13 +246,17 @@ fn move_all_next(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
     let mut sinks_iter = sinks.iter();
     let _default = sinks_iter.find(|x| x.is_default).unwrap();
     match sinks_iter.next() {
-        Some(next) => sink_inputs
-            .iter()
-            .for_each(|x| move_sinks(x.clone(), next.clone())),
+        Some(next) => sink_inputs.iter().for_each(|x| move_sinks(x, next)),
         None => sink_inputs
             .iter()
-            .for_each(|x| move_sinks(x.clone(), sinks.first().unwrap().clone())),
+            .for_each(|x| move_sinks(x, sinks.first().unwrap())),
     }
+}
+
+fn move_all_default(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
+    let mut sinks_iter = sinks.iter();
+    let default = sinks_iter.find(|x| x.is_default).unwrap();
+    sink_inputs.iter().for_each(|x| move_sinks(x, default));
 }
 
 fn cli_prompt(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
@@ -290,7 +294,7 @@ fn cli_prompt(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
         .find(|x| x.index == user_sink)
         .expect("Could not find the referenced sink input");
 
-    move_sinks(sink_input, sink);
+    move_sinks(&sink_input, &sink);
 }
 
 fn main() {
@@ -304,6 +308,8 @@ fn main() {
     if let Some(opt) = cli.move_all {
         if &opt == "next" || &opt == "n" {
             move_all_next(sinks, sink_inputs);
+        } else if &opt == "default" || &opt == "d" {
+            move_all_default(sinks, sink_inputs);
         }
     } else {
         cli_prompt(sinks, sink_inputs);

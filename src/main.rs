@@ -8,6 +8,8 @@ use std::process::{Command, Stdio};
 struct Cli {
     #[arg(short, long)]
     move_all: Option<String>,
+    #[arg(short, long)]
+    print: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -242,7 +244,9 @@ fn print_sink_inputs(sink_inputs: &[SinkInput]) {
     println!();
 }
 
-fn move_all_next(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
+fn move_all_next() {
+    let sinks = collect_sinks().unwrap();
+    let sink_inputs = collect_sink_inputs().unwrap();
     let mut sinks_iter = sinks.iter();
     let _default = sinks_iter.find(|x| x.is_default).unwrap();
     match sinks_iter.next() {
@@ -253,13 +257,17 @@ fn move_all_next(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
     }
 }
 
-fn move_all_default(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
+fn move_all_default() {
+    let sinks = collect_sinks().unwrap();
+    let sink_inputs = collect_sink_inputs().unwrap();
     let mut sinks_iter = sinks.iter();
     let default = sinks_iter.find(|x| x.is_default).unwrap();
     sink_inputs.iter().for_each(|x| move_sinks(x, default));
 }
 
-fn cli_prompt(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
+fn cli_prompt() {
+    let sinks = collect_sinks().unwrap();
+    let sink_inputs = collect_sink_inputs().unwrap();
     print_sink_inputs(&sink_inputs);
     print_sinks(&sinks);
 
@@ -299,19 +307,20 @@ fn cli_prompt(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
 
 fn main() {
     let cli = Cli::parse();
-    // Collect our output devices
-    let sinks = collect_sinks().unwrap();
-
-    // Collect the audio streams
-    let sink_inputs = collect_sink_inputs().unwrap();
 
     if let Some(opt) = cli.move_all {
         if &opt == "next" || &opt == "n" {
-            move_all_next(sinks, sink_inputs);
+            move_all_next();
         } else if &opt == "default" || &opt == "d" {
-            move_all_default(sinks, sink_inputs);
+            move_all_default();
+        }
+    } else if let Some(opt) = cli.print {
+        if &opt == "default" || &opt == "d" {
+            let sinks = collect_sinks().unwrap();
+            let default = sinks.iter().find(|x| x.is_default).unwrap();
+            println!("{}", default.description);
         }
     } else {
-        cli_prompt(sinks, sink_inputs);
+        cli_prompt();
     }
 }

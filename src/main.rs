@@ -7,10 +7,7 @@ use std::process::{Command, Stdio};
 #[command(version, about, long_about = None)]
 struct Cli {
     #[arg(short, long)]
-    next: bool,
-
-    #[arg(short, long)]
-    debug: bool,
+    move_all: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -201,7 +198,7 @@ fn set_default_sink(sink: Sink) {
 
 // TODO: This is a placeholder function. Consider cleaning this function
 // for actual use or removing it when no longer needed
-fn print_sinks(sinks: &Vec<Sink>) {
+fn print_sinks(sinks: &[Sink]) {
     println!("====== Sinks ======");
     for sink in sinks {
         let index = sink.index;
@@ -221,17 +218,17 @@ fn print_sinks(sinks: &Vec<Sink>) {
 
 // TODO: This is a placeholder function. Consider cleaning this function
 // for actual use or removing it when no longer needed
-fn print_sink_inputs(sink_inputs: &Vec<SinkInput>) {
+fn print_sink_inputs(sink_inputs: &[SinkInput]) {
     println!("====== Inputs ======");
     let mut apps: Vec<String> = Vec::new();
-    let mut inputs_clone = sink_inputs.clone();
+    let mut inputs_clone = sink_inputs.to_owned();
     inputs_clone.sort_by(|a, b| a.app.partial_cmp(&b.app).unwrap());
     for input in inputs_clone {
         let index = input.index;
-        let media = input.media;
-        let app = input.app;
+        let media = &input.media;
+        let app = &input.app;
         if let Some(_app) = apps.last() {
-            if _app != &app {
+            if _app != app {
                 apps.push(app.to_owned());
                 println!();
                 println!("{app}");
@@ -243,6 +240,19 @@ fn print_sink_inputs(sink_inputs: &Vec<SinkInput>) {
         println!("  {index} -> \"{media}\"");
     }
     println!();
+}
+
+fn move_all_next(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
+    let mut sinks_iter = sinks.iter();
+    let _default = sinks_iter.find(|x| x.is_default).unwrap();
+    match sinks_iter.next() {
+        Some(next) => sink_inputs
+            .iter()
+            .for_each(|x| move_sinks(x.clone(), next.clone())),
+        None => sink_inputs
+            .iter()
+            .for_each(|x| move_sinks(x.clone(), sinks.first().unwrap().clone())),
+    }
 }
 
 fn cli_prompt(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
@@ -291,10 +301,10 @@ fn main() {
     // Collect the audio streams
     let sink_inputs = collect_sink_inputs().unwrap();
 
-    let _default_sink = sinks.clone().into_iter().find(|x| x.is_default).unwrap();
-
-    if cli.next {
-        todo!();
+    if let Some(opt) = cli.move_all {
+        if &opt == "next" || &opt == "n" {
+            move_all_next(sinks, sink_inputs);
+        }
     } else {
         cli_prompt(sinks, sink_inputs);
     }

@@ -13,7 +13,7 @@ struct Cli {
     debug: bool,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 struct Sink {
     index: u32,
     name: String,
@@ -21,7 +21,7 @@ struct Sink {
     is_default: bool,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 struct SinkInput {
     index: u32,
     state: String,
@@ -206,7 +206,15 @@ fn print_sinks(sinks: &Vec<Sink>) {
     for sink in sinks {
         let index = sink.index;
         let name = &sink.name;
-        println!("{index} - {name}");
+        let description = &sink.description;
+        let is_default = sink.is_default;
+        if is_default {
+            println!("* Index: {index}");
+            println!("    {description} - <{name}>");
+        } else {
+            println!("  Index: {index}");
+            println!("    {description} - <{name}>");
+        }
     }
     println!();
 }
@@ -214,13 +222,25 @@ fn print_sinks(sinks: &Vec<Sink>) {
 // TODO: This is a placeholder function. Consider cleaning this function
 // for actual use or removing it when no longer needed
 fn print_sink_inputs(sink_inputs: &Vec<SinkInput>) {
-    println!("====== Streams ======");
-    for input in sink_inputs {
+    println!("====== Inputs ======");
+    let mut apps: Vec<String> = Vec::new();
+    let mut inputs_clone = sink_inputs.clone();
+    inputs_clone.sort_by(|a, b| a.app.partial_cmp(&b.app).unwrap());
+    for input in inputs_clone {
         let index = input.index;
-        let media = &input.media;
-        let app = &input.app;
-        println!("{index} - {app}");
-        println!("> {media}");
+        let media = input.media;
+        let app = input.app;
+        if let Some(_app) = apps.last() {
+            if _app != &app {
+                apps.push(app.to_owned());
+                println!();
+                println!("{app}");
+            }
+        } else {
+            apps.push(app.to_owned());
+            println!("{app}");
+        }
+        println!("  {index} -> \"{media}\"");
     }
     println!();
 }
@@ -229,7 +249,7 @@ fn cli_prompt(sinks: Vec<Sink>, sink_inputs: Vec<SinkInput>) {
     print_sink_inputs(&sink_inputs);
     print_sinks(&sinks);
 
-    println!("Chose Sink Stream");
+    println!("Chose Sink Input");
     let mut user_sink_input_raw = String::new();
     io::stdin()
         .read_line(&mut user_sink_input_raw)
